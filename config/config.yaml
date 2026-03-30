@@ -1,0 +1,43 @@
+# nymble-relay default configuration
+#
+# User overrides: ~/.nymble/relay.yaml
+# CLI overrides take precedence over all config files.
+
+server:
+  # WebSocket listen port for client connections
+  ws_port: 9200
+  # Unix socket path for local IPC (nymble-stt, scripts, etc.)
+  unix_socket: "~/.nymble/relay.sock"
+
+output:
+  # Output method: auto | hid | clipboard | xdotool
+  # auto tries hid → xdotool → clipboard in order
+  method: auto
+
+  typing_speed:
+    # Inter-key delay in milliseconds (0 = fastest, no delay)
+    delay_ms: 0
+    # Characters per burst (0 = type all at once; only used when delay_ms > 0)
+    burst_size: 0
+    # Delay before starting to type, in milliseconds
+    pre_delay_ms: 0
+
+  # Append a newline/Enter after each transcription
+  append_newline: false
+  # Text to prepend to every transcription
+  prefix: ""
+  # Text to append to every transcription
+  suffix: ""
+
+hid:
+  # Serial port for RP2040 HID device (null = auto-detect)
+  port: null
+  # Baud rate for serial communication
+  baud_rate: 115200
+  # Serial read timeout in seconds
+  timeout: 1.0
+
+pairing:
+  # Discovery server URL for remote pairing (leave empty to disable)
+  # Example: wss://discovery.example.com
+  discovery_url: ""
