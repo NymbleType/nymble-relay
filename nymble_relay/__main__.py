@@ -28,6 +28,10 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--config", metavar="PATH", help="Config file path")
     parser.add_argument("--port", type=int, metavar="PORT", help="WebSocket listen port (default: 9200)")
+    parser.add_argument(
+        "--bind", metavar="ADDR",
+        help="Bind address (default: 127.0.0.1). Use 0.0.0.0 for LAN access.",
+    )
     parser.add_argument("--socket", metavar="PATH", help="Unix socket path (default: ~/.nymble/relay.sock)")
     parser.add_argument(
         "--output", choices=["hid", "clipboard", "xdotool", "auto"],
@@ -123,6 +127,8 @@ def main():
     cli_overrides: dict = {}
     if args.port:
         cli_overrides.setdefault("server", {})["ws_port"] = args.port
+    if args.bind:
+        cli_overrides.setdefault("server", {})["bind_address"] = args.bind
     if args.socket:
         cli_overrides.setdefault("server", {})["unix_socket"] = args.socket
     if args.output:

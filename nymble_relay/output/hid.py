@@ -3,10 +3,14 @@
 Optional output method. Requires the RP2040 HID device connected via USB serial.
 
 Firmware protocol:
-  TYPE:<text>   → OK:TYPED   — type text as keystrokes
-  KEY:<name>    → OK:KEY     — send a special key (ENTER, TAB, etc.)
-  PING          → OK:PONG    — keepalive
-  SPEED:<ms>    → OK:SPEED   — set firmware-level inter-key delay (future)
+  TYPE:<text>        → OK:TYPED   — type text as keystrokes
+  KEY:<name>         → OK:KEY     — send a special key (ENTER, TAB, etc.)
+  COMBO:<key+key>    → OK:COMBO   — press a key combination (CTRL+A, etc.)
+  HOLD:<key>         → OK:HOLD    — hold a key down
+  RELEASE            → OK:RELEASE — release all held keys
+  SPEED:<ms>         → OK:SPEED   — set firmware-level inter-key delay
+  DELAY:<ms>         → OK:DELAY   — pause for N milliseconds
+  PING               → OK:PONG    — keepalive
 """
 
 import logging
@@ -119,30 +123,31 @@ class HidOutput:
             return description.split(" v", 1)[1].strip()
         return None
 
-    def ping(self) -> bool:
-        """Send a PING to the RP2040 and check for OK:PONG response."""
+    def _send_command(self, command: str) -> str | None:
+        """Send a command to the RP2040 and return the response line.
+
+        Returns the response string on success, None on failure.
+        """
         if not self._serial:
-            return False
+            return None
         try:
-            self._serial.write(b"PING\n")
+            self._serial.write(f"{command}\n".encode("utf-8"))
             self._serial.flush()
             response = self._serial.readline().decode("utf-8", errors="replace").strip()
-            return response == "OK:PONG"
-        except Exception:
-            return False
+            return response
+        except Exception as e:
+            logger.error("Serial command failed (%s): %s", command.split(":")[0], e)
+            return None
+
+    def ping(self) -> bool:
+        """Send a PING to the RP2040 and check for OK:PONG response."""
+        response = self._send_command("PING")
+        return response == "OK:PONG"
 
     def type_text(self, text: str) -> bool:
         """Send text to be typed as keystrokes by the HID device."""
-        if not self._serial:
-            return False
-        try:
-            self._serial.write(f"TYPE:{text}\n".encode("utf-8"))
-            self._serial.flush()
-            response = self._serial.readline().decode("utf-8", errors="replace").strip()
-            return response.startswith("OK:")
-        except Exception as e:
-            logger.error("HID type failed: %s", e)
-            return False
+        response = self._send_command(f"TYPE:{text}")
+        return response is not None and response.startswith("OK:")
 
     def type_char(self, char: str) -> bool:
         """Type a single character. Used for per-key timing control from OutputManager."""
@@ -150,31 +155,57 @@ class HidOutput:
 
     def send_key(self, key_name: str) -> bool:
         """Send a special key (ENTER, TAB, ESC, etc.) to the HID device."""
-        if not self._serial:
-            return False
-        try:
-            self._serial.write(f"KEY:{key_name}\n".encode("utf-8"))
-            self._serial.flush()
-            response = self._serial.readline().decode("utf-8", errors="replace").strip()
-            return response.startswith("OK:")
-        except Exception:
-            return False
+        response = self._send_command(f"KEY:{key_name}")
+        return response is not None and response.startswith("OK:")
+
+    def send_combo(self, keys: list[str] | str) -> bool:
+        """Send a key combination (e.g., CTRL+A, ALT+TAB).
+
+        Accepts either a list of key names or a '+'-joined string.
+        """
+        if isinstance(keys, list):
+            combo_str = "+".join(keys)
+        else:
+            combo_str = keys
+        response = self._send_command(f"COMBO:{combo_str}")
+        return response is not None and response.startswith("OK:")
+
+    def hold_key(self, key_name: str) -> bool:
+        """Press and hold a key (released by release_keys or next RELEASE command)."""
+        response = self._send_command(f"HOLD:{key_name}")
+        return response is not None and response.startswith("OK:")
+
+    def release_keys(self) -> bool:
+        """Release all held keys on the HID device."""
+        response = self._send_command("RELEASE")
+        return response is not None and response.startswith("OK:")
 
     def set_speed(self, delay_ms: int) -> bool:
-        """Send a SPEED command to the RP2040 for firmware-level inter-key delay.
+        """Set the firmware-level inter-key delay in milliseconds.
 
-        This is a future feature — the firmware must support the SPEED command.
+        0 = fastest (no delay between keystrokes).
         """
-        if not self._serial:
-            return False
-        try:
-            self._serial.write(f"SPEED:{delay_ms}\n".encode("utf-8"))
-            self._serial.flush()
-            response = self._serial.readline().decode("utf-8", errors="replace").strip()
-            return response.startswith("OK:")
-        except Exception as e:
-            logger.debug("SPEED command not supported by firmware: %s", e)
-            return False
+        response = self._send_command(f"SPEED:{delay_ms}")
+        return response is not None and response.startswith("OK:")
+
+    def send_delay(self, delay_ms: int) -> bool:
+        """Tell the firmware to pause for N milliseconds.
+
+        The firmware blocks and responds with OK:DELAY when done.
+        Max 30 seconds (capped by firmware).
+        """
+        # Increase serial timeout for long delays
+        old_timeout = self._serial.timeout if self._serial else 1.0
+        if self._serial and delay_ms > 1000:
+            self._serial.timeout = (delay_ms / 1000.0) + 2.0
+
+        response = self._send_command(f"DELAY:{delay_ms}")
+
+        # Restore timeout
+        if self._serial:
+            self._serial.timeout = old_timeout
+
+        return response is not None and response.startswith("OK:")
 
     @property
     def connected(self) -> bool:

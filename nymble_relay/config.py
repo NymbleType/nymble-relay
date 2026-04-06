@@ -19,6 +19,7 @@ _USER_CONFIG = Path.home() / ".nymble" / "relay.yaml"
 DEFAULT_CONFIG: dict = {
     "server": {
         "ws_port": 9200,
+        "bind_address": "127.0.0.1",
         "unix_socket": "~/.nymble/relay.sock",
     },
     "output": {

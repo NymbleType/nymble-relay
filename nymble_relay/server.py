@@ -20,7 +20,8 @@ from websockets import serve
 from .auth import TokenStore
 from .protocol import (
     parse_message, build_message,
-    MSG_TRANSCRIPT, MSG_STREAM_CHUNK, MSG_KEY, MSG_PING, MSG_CONFIG,
+    MSG_TRANSCRIPT, MSG_STREAM_CHUNK, MSG_KEY, MSG_COMBO, MSG_SEQUENCE,
+    MSG_SPEED, MSG_DELAY, MSG_HOLD, MSG_RELEASE, MSG_PING, MSG_CONFIG,
     MSG_PAIRED, MSG_AUTHENTICATED, MSG_ERROR, MSG_PONG, MSG_STATUS,
 )
 from .output.manager import OutputManager
@@ -56,6 +57,7 @@ class RelayServer:
 
         server_cfg = config.get("server", {})
         self._ws_port = server_cfg.get("ws_port", 9200)
+        self._bind_address = server_cfg.get("bind_address", "127.0.0.1")
         self._unix_socket_path = os.path.expanduser(
             server_cfg.get("unix_socket", "~/.nymble/relay.sock")
         )
@@ -89,10 +91,10 @@ class RelayServer:
         # Start WebSocket server
         self._ws_server = await serve(
             self._handle_ws_connection,
-            "0.0.0.0",
+            self._bind_address,
             self._ws_port,
         )
-        logger.info("WebSocket server listening on ws://0.0.0.0:%d", self._ws_port)
+        logger.info("WebSocket server listening on ws://%s:%d", self._bind_address, self._ws_port)
 
         # Start Unix socket server
         socket_dir = os.path.dirname(self._unix_socket_path)
@@ -296,7 +298,39 @@ class RelayServer:
         elif msg_type == MSG_KEY:
             key = data.get("key", "").strip()
             if key:
-                await self._on_text(f"\x00KEY:{key}", source)
+                await self._run_in_executor(self._output.send_key, key, source)
+            return None
+
+        elif msg_type == MSG_COMBO:
+            keys = data.get("keys", "")
+            if keys:
+                await self._run_in_executor(self._output.send_combo, keys, source)
+            return None
+
+        elif msg_type == MSG_HOLD:
+            key = data.get("key", "").strip()
+            if key:
+                await self._run_in_executor(self._output.hold_key, key, source)
+            return None
+
+        elif msg_type == MSG_RELEASE:
+            await self._run_in_executor(self._output.release_keys, None, source)
+            return None
+
+        elif msg_type == MSG_SPEED:
+            ms = data.get("ms", 0)
+            await self._run_in_executor(self._output.set_device_speed, ms, source)
+            return None
+
+        elif msg_type == MSG_DELAY:
+            ms = data.get("ms", 0)
+            await self._run_in_executor(self._output.send_delay, ms, source)
+            return None
+
+        elif msg_type == MSG_SEQUENCE:
+            steps = data.get("steps", [])
+            if steps:
+                await self._run_in_executor(self._output.execute_sequence, steps, source)
             return None
 
         elif msg_type == MSG_PING:
@@ -313,6 +347,16 @@ class RelayServer:
         else:
             logger.debug("Unknown message type from %s: %s", source, msg_type)
             return None
+
+    async def _run_in_executor(self, func, arg, source: str):
+        """Run a function in the executor. If arg is None, calls func()."""
+        loop = asyncio.get_event_loop()
+        if arg is None:
+            success = await loop.run_in_executor(None, func)
+        else:
+            success = await loop.run_in_executor(None, func, arg)
+        if not success:
+            logger.warning("Command failed from %s: %s", source, func.__name__)
 
     async def _on_text(self, text: str, source: str):
         """Deliver text via the output manager. Runs in executor to avoid blocking."""

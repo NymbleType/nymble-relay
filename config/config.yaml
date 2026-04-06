@@ -6,6 +6,9 @@
 server:
   # WebSocket listen port for client connections
   ws_port: 9200
+  # Bind address for the WebSocket server.
+  # Default 127.0.0.1 = local only. Set to 0.0.0.0 for LAN access.
+  bind_address: "127.0.0.1"
   # Unix socket path for local IPC (nymble-stt, scripts, etc.)
   unix_socket: "~/.nymble/relay.sock"
 

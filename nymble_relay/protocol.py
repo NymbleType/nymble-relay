@@ -6,6 +6,13 @@ Input (client → relay):
   {"type": "transcript", "text": "..."}                              — type this text
   {"type": "stream_chunk", "text": "...", "is_final": true/false}    — streaming
   {"type": "key", "key": "ENTER"}                                    — special keystroke
+  {"type": "combo", "keys": ["CTRL", "A"]}                          — key combination
+  {"type": "combo", "keys": "CTRL+V"}                               — combo as string
+  {"type": "sequence", "steps": [...]}                               — scripted sequence
+  {"type": "speed", "ms": 50}                                       — set typing speed
+  {"type": "delay", "ms": 1000}                                     — pause
+  {"type": "hold", "key": "SHIFT"}                                  — hold a key
+  {"type": "release"}                                                — release held keys
   {"type": "ping"}                                                   — keepalive
   {"type": "config", "typing_speed": {...}}                          — update config at runtime
 
@@ -26,6 +33,12 @@ logger = logging.getLogger(__name__)
 MSG_TRANSCRIPT = "transcript"
 MSG_STREAM_CHUNK = "stream_chunk"
 MSG_KEY = "key"
+MSG_COMBO = "combo"
+MSG_SEQUENCE = "sequence"
+MSG_SPEED = "speed"
+MSG_DELAY = "delay"
+MSG_HOLD = "hold"
+MSG_RELEASE = "release"
 MSG_PING = "ping"
 MSG_CONFIG = "config"
 
@@ -37,7 +50,10 @@ MSG_ERROR = "error"
 MSG_PONG = "pong"
 
 # All known types for validation
-KNOWN_INPUT_TYPES = {MSG_TRANSCRIPT, MSG_STREAM_CHUNK, MSG_KEY, MSG_PING, MSG_CONFIG}
+KNOWN_INPUT_TYPES = {
+    MSG_TRANSCRIPT, MSG_STREAM_CHUNK, MSG_KEY, MSG_COMBO, MSG_SEQUENCE,
+    MSG_SPEED, MSG_DELAY, MSG_HOLD, MSG_RELEASE, MSG_PING, MSG_CONFIG,
+}
 KNOWN_OUTPUT_TYPES = {MSG_PAIRED, MSG_AUTHENTICATED, MSG_STATUS, MSG_ERROR, MSG_PONG}
 
 

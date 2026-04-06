@@ -172,6 +172,101 @@ class OutputManager:
         logger.warning("Key command '%s' requires HID or xdotool output", key_name)
         return False
 
+    def send_combo(self, keys) -> bool:
+        """Send a key combination (e.g., ["CTRL", "A"] or "CTRL+A")."""
+        if self._hid and self._hid.connected:
+            return self._hid.send_combo(keys)
+        if XdotoolOutput.available():
+            # xdotool combo: convert to xdotool key format
+            if isinstance(keys, list):
+                combo_str = "+".join(keys)
+            else:
+                combo_str = keys
+            return self._xdotool.send_key(combo_str)
+        logger.warning("Combo command requires HID or xdotool output")
+        return False
+
+    def hold_key(self, key_name: str) -> bool:
+        """Press and hold a key (HID only)."""
+        if self._hid and self._hid.connected:
+            return self._hid.hold_key(key_name)
+        logger.warning("Hold command requires HID output")
+        return False
+
+    def release_keys(self) -> bool:
+        """Release all held keys (HID only)."""
+        if self._hid and self._hid.connected:
+            return self._hid.release_keys()
+        logger.warning("Release command requires HID output")
+        return True  # Not an error if nothing to release
+
+    def set_device_speed(self, delay_ms: int) -> bool:
+        """Set the firmware-level inter-key delay on the HID device."""
+        if self._hid and self._hid.connected:
+            return self._hid.set_speed(delay_ms)
+        logger.warning("Speed command requires HID output")
+        return False
+
+    def send_delay(self, delay_ms: int) -> bool:
+        """Pause the HID device for N milliseconds."""
+        if self._hid and self._hid.connected:
+            return self._hid.send_delay(delay_ms)
+        # Fallback: sleep locally
+        import time
+        time.sleep(min(delay_ms, 30000) / 1000.0)
+        return True
+
+    def execute_sequence(self, steps: list) -> bool:
+        """Execute a scripted sequence of steps.
+
+        Each step is a dict with one action key:
+          {"type": "text"}     — type text
+          {"key": "ENTER"}     — press a key
+          {"combo": [...]}     — key combination
+          {"delay": 1000}      — pause in ms
+          {"speed": 50}        — set typing speed in ms
+          {"hold": "SHIFT"}    — hold a key
+          {"release": true}    — release all keys
+
+        Speed resets to 0 (fastest) after the sequence completes.
+        """
+        speed_changed = False
+
+        for i, step in enumerate(steps):
+            try:
+                if "type" in step:
+                    self.deliver(step["type"])
+                elif "text" in step:
+                    self.deliver(step["text"])
+                elif "key" in step:
+                    self.send_key(step["key"])
+                elif "combo" in step:
+                    self.send_combo(step["combo"])
+                elif "delay" in step:
+                    self.send_delay(int(step["delay"]))
+                elif "speed" in step:
+                    self.set_device_speed(int(step["speed"]))
+                    speed_changed = True
+                elif "hold" in step:
+                    self.hold_key(step["hold"])
+                elif "release" in step:
+                    self.release_keys()
+                else:
+                    logger.warning("Unknown sequence step %d: %s", i, step)
+            except Exception as e:
+                logger.error("Sequence step %d failed: %s", i, e)
+                # Reset speed and release keys on error
+                if speed_changed:
+                    self.set_device_speed(0)
+                self.release_keys()
+                return False
+
+        # Reset speed after sequence
+        if speed_changed:
+            self.set_device_speed(0)
+
+        return True
+
     @property
     def active_method(self) -> str:
         """Return the name of the currently active output method."""

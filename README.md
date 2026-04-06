@@ -58,6 +58,7 @@ Config files are loaded in order (each overrides the previous):
 ```yaml
 server:
   ws_port: 9200
+  bind_address: "127.0.0.1"  # local only; use 0.0.0.0 for LAN access
   unix_socket: "~/.nymble/relay.sock"
 
 output:
@@ -87,12 +88,19 @@ All messages are JSON over WebSocket or Unix socket.
 
 ```json
 {"type": "transcript", "text": "Hello world"}
-{"type": "stream_chunk", "text": "Hel", "is_final": false}
-{"type": "stream_chunk", "text": "Hello world", "is_final": true}
 {"type": "key", "key": "ENTER"}
+{"type": "combo", "keys": ["CTRL", "A"]}
+{"type": "combo", "keys": "CTRL+V"}
+{"type": "speed", "ms": 50}
+{"type": "delay", "ms": 1000}
+{"type": "hold", "key": "SHIFT"}
+{"type": "release"}
+{"type": "sequence", "steps": [{"text": "hello"}, {"key": "ENTER"}, {"delay": 500}]}
 {"type": "ping"}
 {"type": "config", "typing_speed": {"delay_ms": 50}}
 ```
+
+Plain text (non-JSON) is treated as text to type — no JSON required for simple use.
 
 ### Relay → Client
 
