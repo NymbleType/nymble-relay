@@ -71,6 +71,7 @@ class RelayServer:
         self._pairing_code: str | None = None
         self._connected_clients: set = set()
         self._discovery_ws = None
+        self._hid_poll_task = None
         self._running = False
 
     @property
@@ -109,6 +110,9 @@ class RelayServer:
         )
         logger.info("Unix socket listening on %s", self._unix_socket_path)
 
+        # Start HID hotplug poller (checks for device every 5s when not connected)
+        self._hid_poll_task = asyncio.create_task(self._poll_hid_device())
+
         # Start discovery server connection if configured
         if self._discovery_url:
             asyncio.create_task(self._connect_discovery())
@@ -133,6 +137,10 @@ class RelayServer:
             except Exception:
                 pass
         self._connected_clients.clear()
+
+        if self._hid_poll_task:
+            self._hid_poll_task.cancel()
+            self._hid_poll_task = None
 
         if self._discovery_ws:
             await self._discovery_ws.close()
@@ -379,6 +387,47 @@ class RelayServer:
             self._output.set_preferred(data["output"])
 
         logger.info("Config updated at runtime")
+
+    # --- HID hotplug polling ---
+
+    async def _poll_hid_device(self):
+        """Periodically check for HID device when not connected.
+
+        Runs every 5 seconds. When the device is found, switches output
+        to HID automatically. Stops polling while connected, resumes
+        if the device is unplugged.
+        """
+        poll_interval = 5  # seconds
+        while self._running:
+            try:
+                await asyncio.sleep(poll_interval)
+                if not self._running:
+                    break
+
+                # Already connected — just verify it's still alive
+                if self._output.active_method == "hid":
+                    # Quick liveness check via ping
+                    hid = self._output._hid
+                    if hid and hid.connected:
+                        loop = asyncio.get_event_loop()
+                        alive = await loop.run_in_executor(None, hid.ping)
+                        if not alive:
+                            logger.warning("HID device disconnected")
+                            await loop.run_in_executor(None, hid.disconnect)
+                    continue
+
+                # Not connected — try to find and connect
+                loop = asyncio.get_event_loop()
+                connected = await loop.run_in_executor(
+                    None, self._output.try_connect_hid
+                )
+                if connected:
+                    logger.info("HID device hotplugged — now using HID output")
+
+            except asyncio.CancelledError:
+                break
+            except Exception as e:
+                logger.debug("HID poll error: %s", e)
 
     # --- Discovery server ---
 

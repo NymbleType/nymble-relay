@@ -56,6 +56,22 @@ class OutputManager:
         logger.info("Typing speed updated: delay=%dms burst=%d pre_delay=%dms",
                      delay_ms, burst_size, pre_delay_ms)
 
+    def try_connect_hid(self) -> bool:
+        """Attempt to connect to HID device. Returns True on success.
+
+        Safe to call repeatedly — creates a fresh HidOutput if needed.
+        """
+        if self._preferred not in ("hid", "auto"):
+            return False
+        if self._hid and self._hid.connected:
+            return True
+        # Create a fresh instance in case the old one is stale
+        self._hid = HidOutput.from_config(self._config)
+        if self._hid.connect():
+            logger.info("HID device connected — switching output to HID")
+            return True
+        return False
+
     def connect(self) -> bool:
         """Connect to output devices. Returns True if at least one is available."""
         # Try HID first
