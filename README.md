@@ -40,6 +40,16 @@ pip install nymble-relay           # clipboard + xdotool support
 pip install nymble-relay[hid]      # + RP2040 USB HID support
 ```
 
+Then run it:
+
+```bash
+nymble-relay --help                # show all options
+nymble-relay                       # start the relay daemon
+nymble-relay --generate-token      # generate an auth token
+```
+
+> **Note:** Make sure your venv is activated (`source .venv/bin/activate`) each time you open a new terminal — otherwise your shell won't find the `nymble-relay` command.
+
 > **Why a virtual environment?** A venv keeps nymble-relay's dependencies isolated from your system Python. It's the recommended way to install any Python tool. See [Python docs on venvs](https://docs.python.org/3/library/venv.html) for more.
 
 ## Development Setup
