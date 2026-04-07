@@ -2,6 +2,8 @@
 
 Headless text-to-keystroke relay daemon. Receives text from authenticated sources (mobile app, local STT, scripts) and types it into the active window via USB HID device, xdotool, or clipboard paste.
 
+📖 **[Full documentation](https://nymbletype.github.io/nymble-docs/)**
+
 ## Download
 
 Prebuilt binaries are available on the [Releases](https://github.com/NymbleType/nymble-relay/releases/latest) page:
