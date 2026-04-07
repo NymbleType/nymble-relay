@@ -168,6 +168,91 @@ AUTH_TOKEN\n
 {"type": "transcript", "text": "Hello"}\n
 ```
 
+## Scripting Examples
+
+You don't need a special client to talk to the relay. Any tool that speaks WebSocket or Unix sockets will work.
+
+### curl (WebSocket)
+
+curl 7.86+ supports WebSocket natively:
+
+```bash
+TOKEN="your-auth-token"
+
+# Type a string
+echo '{"type": "transcript", "text": "Hello from curl"}' \
+  | curl --no-buffer -H "Connection: Upgrade" -H "Upgrade: websocket" \
+    "ws://127.0.0.1:9200?auth=$TOKEN" --data-binary @-
+
+# Press Enter
+echo '{"type": "key", "key": "ENTER"}' \
+  | curl --no-buffer -H "Connection: Upgrade" -H "Upgrade: websocket" \
+    "ws://127.0.0.1:9200?auth=$TOKEN" --data-binary @-
+```
+
+### websocat
+
+[websocat](https://github.com/vi/websocat) is a lightweight WebSocket CLI (`cargo install websocat` or grab a binary from releases):
+
+```bash
+TOKEN="your-auth-token"
+
+# One-shot: type text and disconnect
+echo '{"type": "transcript", "text": "Hello from websocat"}' \
+  | websocat "ws://127.0.0.1:9200?auth=$TOKEN"
+
+# Interactive session (type JSON lines, Ctrl+C to quit)
+websocat "ws://127.0.0.1:9200?auth=$TOKEN"
+
+# Plain text works too — no JSON needed
+echo "Just type this" | websocat "ws://127.0.0.1:9200?auth=$TOKEN"
+```
+
+### Unix socket with netcat
+
+No WebSocket needed for local scripts — the Unix socket is simpler:
+
+```bash
+TOKEN="your-auth-token"
+
+# One-liner: auth + type text
+printf '%s\n%s\n' "$TOKEN" '{"type": "transcript", "text": "Hello from nc"}' \
+  | nc -U ~/.nymble/relay.sock
+
+# Plain text (after auth line)
+printf '%s\n%s\n' "$TOKEN" "Just type this" \
+  | nc -U ~/.nymble/relay.sock
+```
+
+### Python one-liner
+
+```bash
+python3 -c "
+import asyncio, websockets, sys
+async def send():
+    async with websockets.connect('ws://127.0.0.1:9200?auth=$TOKEN') as ws:
+        await ws.send(sys.argv[1])
+asyncio.run(send())
+" '{"type": "transcript", "text": "Hello from Python"}'
+```
+
+### Bash function
+
+Drop this in your `.bashrc` for a quick `ntype` command:
+
+```bash
+# Type text via nymble-relay (uses Unix socket)
+ntype() {
+  local token="your-auth-token"
+  printf '%s\n{"type": "transcript", "text": "%s"}\n' "$token" "$*" \
+    | nc -U ~/.nymble/relay.sock
+}
+
+# Usage:
+# ntype Hello world
+# ntype "This is a sentence."
+```
+
 ## Architecture
 
 ```
