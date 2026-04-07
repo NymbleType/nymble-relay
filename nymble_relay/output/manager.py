@@ -106,7 +106,12 @@ class OutputManager:
                 self._hid.send_key("ENTER")
             if success:
                 return True
-            logger.warning("HID output failed, falling back")
+            # IMPORTANT: Do NOT fall back after HID attempt. The HID device
+            # types keystrokes immediately before responding — if the response
+            # is lost/garbled, the text was already typed. Falling back to
+            # xdotool would type it a second time.
+            logger.warning("HID output failed (text may have been partially typed)")
+            return False
 
         # Try xdotool
         if self._preferred in ("xdotool", "auto") and XdotoolOutput.available():

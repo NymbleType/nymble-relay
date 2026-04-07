@@ -76,8 +76,8 @@ nymble-relay
 nymble-stt --destination unix --relay-token YOUR_TOKEN
 
 # 4. Or send text from a script via Unix socket
-echo "YOUR_TOKEN" | nc -U ~/.nymble/relay.sock
-echo '{"type": "transcript", "text": "Hello world"}' | nc -U ~/.nymble/relay.sock
+echo "YOUR_TOKEN" | nc -N -U ~/.nymble/relay.sock
+echo '{"type": "transcript", "text": "Hello world"}' | nc -N -U ~/.nymble/relay.sock
 ```
 
 ## Output Methods
@@ -199,11 +199,11 @@ TOKEN="your-auth-token"
 
 # One-liner: auth + type text
 printf '%s\n%s\n' "$TOKEN" '{"type": "transcript", "text": "Hello from nc"}' \
-  | nc -U ~/.nymble/relay.sock
+  | nc -N -U ~/.nymble/relay.sock
 
 # Plain text (after auth line)
 printf '%s\n%s\n' "$TOKEN" "Just type this" \
-  | nc -U ~/.nymble/relay.sock
+  | nc -N -U ~/.nymble/relay.sock
 ```
 
 ### Python one-liner
@@ -227,7 +227,7 @@ Drop this in your `.bashrc` for a quick `ntype` command:
 ntype() {
   local token="your-auth-token"
   printf '%s\n{"type": "transcript", "text": "%s"}\n' "$token" "$*" \
-    | nc -U ~/.nymble/relay.sock
+    | nc -N -U ~/.nymble/relay.sock
 }
 
 # Usage:
