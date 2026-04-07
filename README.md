@@ -2,6 +2,38 @@
 
 Headless text-to-keystroke relay daemon. Receives text from authenticated sources (mobile app, local STT, scripts) and types it into the active window via USB HID device, xdotool, or clipboard paste.
 
+## Download
+
+Prebuilt binaries are available on the [Releases](https://github.com/NymbleType/nymble-relay/releases/latest) page:
+
+| Platform | Download |
+|----------|----------|
+| Linux x86_64 | `nymble-relay-linux-x86_64` |
+| macOS Apple Silicon | `nymble-relay-macos-arm64` |
+| Windows x86_64 | `nymble-relay-windows-x86_64.exe` |
+
+Download the binary for your platform, make it executable (`chmod +x` on Linux/macOS), and run it directly — no Python installation required.
+
+```bash
+# Linux / macOS
+chmod +x nymble-relay-*
+./nymble-relay-linux-x86_64 --help
+
+# Windows
+nymble-relay-windows-x86_64.exe --help
+```
+
+> **macOS Gatekeeper:** On first launch, macOS may block the unsigned binary. Right-click → Open, or run `xattr -d com.apple.quarantine nymble-relay-macos-arm64` to clear the flag.
+
+## Install from PyPI
+
+If you prefer to install as a Python package:
+
+```bash
+pip install nymble-relay           # clipboard + xdotool support
+pip install nymble-relay[hid]      # + RP2040 USB HID support
+```
+
 ## Development Setup
 
 ```bash
@@ -10,13 +42,6 @@ cd nymble-relay
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -e .
-```
-
-## Install
-
-```bash
-pip install nymble-relay           # clipboard + xdotool support
-pip install nymble-relay[hid]      # + RP2040 USB HID support
 ```
 
 ## Quick Start
