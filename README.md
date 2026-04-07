@@ -172,24 +172,6 @@ AUTH_TOKEN\n
 
 You don't need a special client to talk to the relay. Any tool that speaks WebSocket or Unix sockets will work.
 
-### curl (WebSocket)
-
-curl 7.86+ supports WebSocket natively:
-
-```bash
-TOKEN="your-auth-token"
-
-# Type a string
-echo '{"type": "transcript", "text": "Hello from curl"}' \
-  | curl --no-buffer -H "Connection: Upgrade" -H "Upgrade: websocket" \
-    "ws://127.0.0.1:9200?auth=$TOKEN" --data-binary @-
-
-# Press Enter
-echo '{"type": "key", "key": "ENTER"}' \
-  | curl --no-buffer -H "Connection: Upgrade" -H "Upgrade: websocket" \
-    "ws://127.0.0.1:9200?auth=$TOKEN" --data-binary @-
-```
-
 ### websocat
 
 [websocat](https://github.com/vi/websocat) is a lightweight WebSocket CLI (`cargo install websocat` or grab a binary from releases):
