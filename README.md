@@ -146,6 +146,8 @@ All messages are JSON over WebSocket or Unix socket.
 
 Plain text (non-JSON) is treated as text to type — no JSON required for simple use.
 
+> **Important:** JSON messages must be on a single line. The relay reads line by line — multi-line JSON will be split and each line typed as raw text.
+
 ### Relay → Client
 
 ```json
@@ -172,15 +174,35 @@ AUTH_TOKEN\n
 
 You don't need a special client to talk to the relay. Any tool that speaks WebSocket or Unix sockets will work.
 
-### websocat
+### websockets CLI (already installed)
 
-[websocat](https://github.com/vi/websocat) is a lightweight WebSocket CLI (`cargo install websocat` or grab a binary from releases):
+If you installed via pip, the `websockets` library is already there — it has a built-in CLI:
 
 ```bash
 TOKEN="your-auth-token"
 
+# Interactive session (type messages, Ctrl+D to quit)
+python3 -m websockets "ws://127.0.0.1:9200?auth=$TOKEN"
+
+# One-shot: pipe a message
+echo '{"type":"transcript","text":"Hello"}' \
+  | python3 -m websockets "ws://127.0.0.1:9200?auth=$TOKEN"
+```
+
+### websocat
+
+[websocat](https://github.com/vi/websocat) is a standalone WebSocket CLI:
+
+```bash
+# Install
+sudo snap install websocat            # Ubuntu/Debian
+# or: cargo install websocat          # Rust
+# or: download from https://github.com/vi/websocat/releases
+
+TOKEN="your-auth-token"
+
 # One-shot: type text and disconnect
-echo '{"type": "transcript", "text": "Hello from websocat"}' \
+echo '{"type":"transcript","text":"Hello from websocat"}' \
   | websocat "ws://127.0.0.1:9200?auth=$TOKEN"
 
 # Interactive session (type JSON lines, Ctrl+C to quit)
