@@ -17,9 +17,6 @@ jobs:
           - os: ubuntu-22.04
             name: linux-x86_64
             artifact: nymble-relay
-          - os: macos-13
-            name: macos-x86_64
-            artifact: nymble-relay
           - os: macos-14
             name: macos-arm64
             artifact: nymble-relay
@@ -88,3 +85,25 @@ jobs:
           files: |
             artifacts/nymble-relay-*
             artifacts/SHA256SUMS.txt
+
+  pypi:
+    runs-on: ubuntu-latest
+    name: Publish to PyPI
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Build package
+        run: |
+          pip install build
+          python -m build
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          password: ${{ secrets.PYPI_API_TOKEN }}
